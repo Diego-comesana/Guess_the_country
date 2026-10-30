@@ -1,13 +1,212 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>mi-app-scrum</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
-  </body>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego de Banderas</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .game-container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .score {
+            font-size: 1.1rem;
+            color: #555;
+            margin-bottom: 20px;
+        }
+        .flag-container {
+            margin: 20px 0;
+            height: 180px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .flag-container img {
+            max-height: 150px;
+            max-width: 100%;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            border: 1px solid #ddd;
+        }
+        .options {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        button.option-btn {
+            background-color: #4f46e5;
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button.option-btn:hover {
+            background-color: #4338ca;
+        }
+        button.option-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        .correct {
+            background-color: #16a34a !important;
+        }
+        .wrong {
+            background-color: #dc2626 !important;
+        }
+        #message {
+            margin-top: 15px;
+            font-weight: bold;
+            height: 24px;
+        }
+        #next-btn {
+            margin-top: 20px;
+            background-color: #0ea5e9;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            display: none;
+        }
+        #next-btn:hover {
+            background-color: #0284c7;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <h1>Adivina el País</h1>
+        <div class="score">Puntuación: <span id="score">0</span></div>
+        
+        <div class="flag-container">
+            <img id="flag-img" src="" alt="Bandera del país" style="display:none;">
+            <div id="loading">Cargando juego...</div>
+        </div>
+
+        <div class="options" id="options-container"></div>
+        <div id="message"></div>
+        
+        <button id="next-btn" onclick="nextQuestion()">Siguiente Pregunta</button>
+    </div>
+
+    <script>
+        // Lista robusta de países con banderas garantizadas vía CDN
+        const countries = [
+            { name: "España", code: "es" },
+            { name: "México", code: "mx" },
+            { name: "Argentina", code: "ar" },
+            { name: "Colombia", code: "co" },
+            { name: "Chile", code: "cl" },
+            { name: "Perú", code: "pe" },
+            { name: "Estados Unidos", code: "us" },
+            { name: "Francia", code: "fr" },
+            { name: "Alemania", code: "de" },
+            { name: "Italia", code: "it" },
+            { name: "Brasil", code: "br" },
+            { name: "Japón", code: "jp" },
+            { name: "Canadá", code: "ca" },
+            { name: "Reino Unido", code: "gb" },
+            { name: "Australia", code: "au" },
+            { name: "Portugal", code: "pt" },
+            { name: "Uruguay", code: "uy" },
+            { name: "Venezuela", code: "ve" },
+            { name: "Ecuador", code: "ec" },
+            { name: "Corea del Sur", code: "kr" }
+        ];
+
+        let score = 0;
+        let currentCorrectCountry = null;
+
+        const flagImg = document.getElementById('flag-img');
+        const loading = document.getElementById('loading');
+        const optionsContainer = document.getElementById('options-container');
+        const scoreDisplay = document.getElementById('score');
+        const messageDisplay = document.getElementById('message');
+        const nextBtn = document.getElementById('next-btn');
+
+        function initGame() {
+            loading.style.display = 'none';
+            flagImg.style.display = 'block';
+            nextQuestion();
+        }
+
+        function getRandomItems(arr, n) {
+            const shuffled = [...arr].sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, n);
+        }
+
+        function nextQuestion() {
+            messageDisplay.textContent = '';
+            nextBtn.style.display = 'none';
+            
+            const selectedCountries = getRandomItems(countries, 4);
+            currentCorrectCountry = selectedCountries[0];
+            const options = getRandomItems(selectedCountries, 4);
+
+            // Cargamos la bandera usando FlagCDN de forma rápida y segura
+            flagImg.src = `https://flagcdn.com/w320/${currentCorrectCountry.code}.png`;
+
+            optionsContainer.innerHTML = '';
+            options.forEach(country => {
+                const btn = document.createElement('button');
+                btn.classList.add('option-btn');
+                btn.textContent = country.name;
+                btn.onclick = () => checkAnswer(country, btn);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(selectedCountry, selectedBtn) {
+            const buttons = optionsContainer.querySelectorAll('button');
+            buttons.forEach(btn => btn.disabled = true);
+
+            if (selectedCountry.name === currentCorrectCountry.name) {
+                selectedBtn.classList.add('correct');
+                score += 10;
+                scoreDisplay.textContent = score;
+                messageDisplay.textContent = '¡Correcto! 🎉';
+                messageDisplay.style.color = '#16a34a';
+            } else {
+                selectedBtn.classList.add('wrong');
+                messageDisplay.textContent = `¡Fallaste! Era ${currentCorrectCountry.name}. ❌`;
+                messageDisplay.style.color = '#dc2626';
+                
+                buttons.forEach(btn => {
+                    if (btn.textContent === currentCorrectCountry.name) {
+                        btn.classList.add('correct');
+                    }
+                });
+            }
+
+            nextBtn.style.display = 'inline-block';
+        }
+
+        // Iniciar juego inmediatamente
+        initGame();
+    </script>
+</body>
 </html>
